@@ -85,11 +85,11 @@ class Enemy:
         # screen.blit(image, (self.x, self.y))
         pygame.draw.circle(screen, self.color, [self.x, self.y, ], self.size)
 
-    def getdamage(self, x):
-        self.health -= x
+    def getdamage(self):
         if self.health <= 0:
-            pass
-            # удалить объект !!!!!!!!!!!
+            player.money += self.reward
+            enemies.remove(self)
+
 
     def Move(self):
         a = vector(self.x, self.y, enemy_points[self.point][0], enemy_points[self.point][1])
@@ -142,19 +142,42 @@ class MachineGun(BasicTower):
                 current = i
         f_closest_enemy = vector(self.x, self.y, enemies[current].x, enemies[current].y)
         if self.current_reload <= 0 and f_closest_enemy[2] <= self.range:
-            all_bullets.append(Bullet(self.x, self.y, 3, "red", 5, 10))
+            all_bullets.append(Bullet(self.x, self.y, 3, "red", self.damage, 10))
             self.current_reload = self.reload
         else:
             self.current_reload -= 1 / FPS
-        print(f_closest_enemy[2], self.range)
 
 
 class Artillery(BasicTower):
-    pass
+    def shot(self):
+        distance = 999999999
+        current = 0
+        for i in range(len(enemies)):
+            closest_enemy = vector(self.x + CELL_SIZE_2, self.y + CELL_SIZE_2, enemies[i].x, enemies[i].y)
+            if closest_enemy[2] < distance:
+                current = i
+        f_closest_enemy = vector(self.x, self.y, enemies[current].x, enemies[current].y)
+        if self.current_reload <= 0 and f_closest_enemy[2] <= self.range:
+            all_bullets.append(Bullet(self.x, self.y, 5, "green", self.damage, 8))
+            self.current_reload = self.reload
+        else:
+            self.current_reload -= 1 / FPS
 
 
 class Lazer(BasicTower):
-    pass
+    def shot(self):
+        distance = 999999999
+        current = 0
+        for i in range(len(enemies)):
+            closest_enemy = vector(self.x + CELL_SIZE_2, self.y + CELL_SIZE_2, enemies[i].x, enemies[i].y)
+            if closest_enemy[2] < distance:
+                current = i
+        f_closest_enemy = vector(self.x, self.y, enemies[current].x, enemies[current].y)
+        if self.current_reload <= 0 and f_closest_enemy[2] <= self.range:
+            all_bullets.append(Bullet(self.x, self.y, 2, "yellow", self.damage, 12))
+            self.current_reload = self.reload
+        else:
+            self.current_reload -= 1 / FPS
 
 
 class Bullet:
@@ -165,21 +188,31 @@ class Bullet:
         self.color = color
         self.damage = damage
         self.speed = speed
+        self.closest = ""
+        self.current_enemy = 0
 
     def moving(self):
         distance = 999999999
         current = 0
         for i in range(len(enemies)):
-            closest_enemy = vector(self.x + CELL_SIZE_2, self.y + CELL_SIZE_2, enemies[i].x, enemies[i].y)
+            closest_enemy = vector(self.x, self.y, enemies[i].x, enemies[i].y)
             if closest_enemy[2] < distance:
                 current = i
-        f_closest_enemy = vector(self.x, self.y, enemies[current].x, enemies[current].y)
-        self.x += self.speed * f_closest_enemy[0]
-        self.y += self.speed * f_closest_enemy[1]
+                distance = closest_enemy[2]
+        self.current_enemy = current
+        self.closest = vector(self.x, self.y, enemies[current].x, enemies[current].y)
+        self.x += self.speed * self.closest[0]
+        self.y += self.speed * self.closest[1]
 
 
     def draw_bullet(self):
         pygame.draw.circle(screen, self.color, (self.x, self.y), self.size)
+
+    def reached(self):
+        if self.closest[2] <= enemies[self.current_enemy].size + self.size:
+            enemies[self.current_enemy].health -= self.damage
+            all_bullets.remove(self)
+
 
 
 def build():
@@ -188,14 +221,14 @@ def build():
     pos_y = math.floor(mouse_pos[1] / CELL_SIZE) * CELL_SIZE + CELL_SIZE_2
     key = pygame.key.get_pressed()
     if key[pygame.K_1] and empty_slot(pos_x, pos_y) and player.money - 50 >= 0:
-        all_towers.append(MachineGun(pos_x, pos_y, CELL_SIZE_2, 5, 0.2, 225, 100, "red"))
+        all_towers.append(MachineGun(pos_x, pos_y, CELL_SIZE_2, 30, 0.2, 225, 50, "red"))
         player.money -= 50
         print(1)
     if key[pygame.K_2] and empty_slot(pos_x, pos_y) and player.money - 100 >= 0:
-        all_towers.append(Artillery(pos_x, pos_y, CELL_SIZE_2, 5, 1, 40, 600, "blue"))
+        all_towers.append(Artillery(pos_x, pos_y, CELL_SIZE_2, 150, 0.8, 300, 100, "green"))
         player.money -= 100
     if key[pygame.K_3] and empty_slot(pos_x, pos_y) and player.money - 70 >= 0:
-        all_towers.append(Lazer(pos_x, pos_y, CELL_SIZE_2, 5, 0.05, 1, 300, "yellow"))
+        all_towers.append(Lazer(pos_x, pos_y, CELL_SIZE_2, 15, 0.05, 200, 70, "yellow"))
         player.money -= 70
 
 
@@ -266,15 +299,17 @@ def main():
     for enemy in enemies:
         enemy.Move()
         enemy.Draw()
+        enemy.getdamage()
+        print(enemy.health)
     Checking_player_death()
     for tower in all_towers:
         tower.draw_tower()
         tower.shot()
     print(all_bullets)
     for bullet in all_bullets:
-        bullet.draw_bullet()
         bullet.moving()
         bullet.reached()
+        bullet.draw_bullet()
     lost_the_game()
 
 
@@ -282,7 +317,7 @@ pygame.init()
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 running = True
-player = Player(80, 100)
+player = Player(100, 100)
 f2 = pygame.font.SysFont('serif', 36)
 
 while running:
