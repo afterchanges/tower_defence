@@ -1,5 +1,5 @@
 import math
-
+import keyboard
 import pygame
 
 FPS = 30
@@ -18,11 +18,16 @@ all_bullets = []
 enemies = []
 enemy_way = []
 
-MONSTERHP = 10
+monsterhp = 50
 MONSTERSPEED = 10
 wafetime = 0
 NUMBERMONSTERS = 5
-wafecounter = 0
+wavecounter = 1
+monsterreward = 10
+numberofmonsters = 8
+boss_hp = 30000
+boss = False
+bossreward = 3000
 
 Map = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -81,9 +86,12 @@ class Enemy:
         self.reward = reward
 
     def Draw(self):
-        # image = pygame.image.load('data\monster.png').convert_alpha()
-        # screen.blit(image, (self.x, self.y))
-        pygame.draw.circle(screen, self.color, [self.x, self.y, ], self.size)
+        if not boss:
+            image = pygame.image.load('monster.png').convert_alpha()
+            screen.blit(image, (self.x - 15, self.y - 15))
+        else:
+            image = pygame.image.load('boss.png').convert_alpha()
+            screen.blit(image, (self.x - 30, self.y - 30))
 
     def getdamage(self):
         if self.health <= 0:
@@ -129,7 +137,16 @@ class BasicTower:
         self.color = color
 
     def draw_tower(self):
-        pygame.draw.circle(screen, self.color, [self.x, self.y], self.size)
+        if self.color == 'red':
+            image = pygame.image.load('ower1.png').convert_alpha()
+            screen.blit(image, (self.x - 30, self.y - 40))
+        elif self.color == 'yellow':
+            image = pygame.image.load('ower2.png').convert_alpha()
+            screen.blit(image, (self.x - 30, self.y - 40))
+        elif self.color == 'green':
+            image = pygame.image.load('ower3.png').convert_alpha()
+            screen.blit(image, (self.x - 30, self.y - 40))
+
 
 
 class MachineGun(BasicTower):
@@ -140,12 +157,13 @@ class MachineGun(BasicTower):
             closest_enemy = vector(self.x + CELL_SIZE_2, self.y + CELL_SIZE_2, enemies[i].x, enemies[i].y)
             if closest_enemy[2] < distance:
                 current = i
-        f_closest_enemy = vector(self.x, self.y, enemies[current].x, enemies[current].y)
-        if self.current_reload <= 0 and f_closest_enemy[2] <= self.range:
-            all_bullets.append(Bullet(self.x, self.y, 3, "red", self.damage, 10))
-            self.current_reload = self.reload
-        else:
-            self.current_reload -= 1 / FPS
+        if len (enemies) > 0:
+            f_closest_enemy = vector(self.x, self.y, enemies[current].x, enemies[current].y)
+            if self.current_reload <= 0 and f_closest_enemy[2] <= self.range:
+               all_bullets.append(Bullet(self.x, self.y, 3, "red", self.damage, 10))
+               self.current_reload = self.reload
+            else:
+                self.current_reload -= 1 / FPS
 
 
 class Artillery(BasicTower):
@@ -156,12 +174,13 @@ class Artillery(BasicTower):
             closest_enemy = vector(self.x + CELL_SIZE_2, self.y + CELL_SIZE_2, enemies[i].x, enemies[i].y)
             if closest_enemy[2] < distance:
                 current = i
-        f_closest_enemy = vector(self.x, self.y, enemies[current].x, enemies[current].y)
-        if self.current_reload <= 0 and f_closest_enemy[2] <= self.range:
-            all_bullets.append(Bullet(self.x, self.y, 5, "green", self.damage, 8))
-            self.current_reload = self.reload
-        else:
-            self.current_reload -= 1 / FPS
+        if len(enemies):
+            f_closest_enemy = vector(self.x, self.y, enemies[current].x, enemies[current].y)
+            if self.current_reload <= 0 and f_closest_enemy[2] <= self.range:
+                all_bullets.append(Bullet(self.x, self.y, 5, "green", self.damage, 8))
+                self.current_reload = self.reload
+            else:
+                self.current_reload -= 1 / FPS
 
 
 class Lazer(BasicTower):
@@ -172,12 +191,13 @@ class Lazer(BasicTower):
             closest_enemy = vector(self.x + CELL_SIZE_2, self.y + CELL_SIZE_2, enemies[i].x, enemies[i].y)
             if closest_enemy[2] < distance:
                 current = i
-        f_closest_enemy = vector(self.x, self.y, enemies[current].x, enemies[current].y)
-        if self.current_reload <= 0 and f_closest_enemy[2] <= self.range:
-            all_bullets.append(Bullet(self.x, self.y, 2, "yellow", self.damage, 12))
-            self.current_reload = self.reload
-        else:
-            self.current_reload -= 1 / FPS
+        if len(enemies) > 0:
+            f_closest_enemy = vector(self.x, self.y, enemies[current].x, enemies[current].y)
+            if self.current_reload <= 0 and f_closest_enemy[2] <= self.range:
+                all_bullets.append(Bullet(self.x, self.y, 2, "yellow", self.damage, 12))
+                self.current_reload = self.reload
+            else:
+                self.current_reload -= 1 / FPS
 
 
 class Bullet:
@@ -200,18 +220,21 @@ class Bullet:
                 current = i
                 distance = closest_enemy[2]
         self.current_enemy = current
-        self.closest = vector(self.x, self.y, enemies[current].x, enemies[current].y)
-        self.x += self.speed * self.closest[0]
-        self.y += self.speed * self.closest[1]
+        if len(enemies) > 0:
+            self.closest = vector(self.x, self.y, enemies[current].x, enemies[current].y)
+        if len(self.closest) > 0:
+            self.x += self.speed * self.closest[0]
+            self.y += self.speed * self.closest[1]
 
 
     def draw_bullet(self):
         pygame.draw.circle(screen, self.color, (self.x, self.y), self.size)
 
     def reached(self):
-        if self.closest[2] <= enemies[self.current_enemy].size + self.size:
-            enemies[self.current_enemy].health -= self.damage
-            all_bullets.remove(self)
+        if len(enemies) > 0:
+            if self.closest[2] <= enemies[self.current_enemy].size + self.size:
+                enemies[self.current_enemy].health -= self.damage
+                all_bullets.remove(self)
 
 
 
@@ -220,16 +243,16 @@ def build():
     pos_x = math.floor(mouse_pos[0] / CELL_SIZE) * CELL_SIZE + CELL_SIZE_2
     pos_y = math.floor(mouse_pos[1] / CELL_SIZE) * CELL_SIZE + CELL_SIZE_2
     key = pygame.key.get_pressed()
-    if key[pygame.K_1] and empty_slot(pos_x, pos_y) and player.money - 50 >= 0:
-        all_towers.append(MachineGun(pos_x, pos_y, CELL_SIZE_2, 30, 0.2, 225, 50, "red"))
-        player.money -= 50
+    if key[pygame.K_1] and empty_slot(pos_x, pos_y) and player.money - 40 >= 0:
+        all_towers.append(MachineGun(pos_x, pos_y, CELL_SIZE_2, 35, 0.2, 225, 40, "red"))
+        player.money -= 40
         print(1)
     if key[pygame.K_2] and empty_slot(pos_x, pos_y) and player.money - 100 >= 0:
         all_towers.append(Artillery(pos_x, pos_y, CELL_SIZE_2, 150, 0.8, 300, 100, "green"))
         player.money -= 100
-    if key[pygame.K_3] and empty_slot(pos_x, pos_y) and player.money - 70 >= 0:
-        all_towers.append(Lazer(pos_x, pos_y, CELL_SIZE_2, 15, 0.05, 200, 70, "yellow"))
-        player.money -= 70
+    if key[pygame.K_3] and empty_slot(pos_x, pos_y) and player.money - 75 >= 0:
+        all_towers.append(Lazer(pos_x, pos_y, CELL_SIZE_2, 20, 0.05, 200, 75, "yellow"))
+        player.money -= 75
 
 
 def empty_slot(x, y):
@@ -272,8 +295,8 @@ def Create_enemy_points(points_count):
                     point += 1
 
 
-def Creating_Enemy(health, speed, size, color, reward):
-    for i in range(10):
+def Creating_Enemy(health, speed, size, color, reward, numberofmonsters):
+    for i in range(int(numberofmonsters)):
         x = enemy_points[0][0] - 200 - i * 20 - 5
         y = enemy_points[0][1]
         enemies.append(Enemy(x, y, health, speed, size, color, reward))
@@ -282,34 +305,53 @@ def Creating_Enemy(health, speed, size, color, reward):
 def Checking_player_death():
     if player.health <= 0:
         global running
-        # image = pygame.image.load('data\game-over.png').convert_alpha()
-        # screen.blit(image, (194, 194))
+        image = pygame.image.load('game-over.png').convert_alpha()
+        screen.blit(image, (194, 194))
         running = False
 
 
 Create_enemy_points(10)
-Creating_Enemy(100, 3, 10, 'midnightblue', 10)
 
 
 def main():
+    global monsterhp
+    global monsterreward
+    global all_bullets
+    global numberofmonsters
+    global boss
+    global boss_hp
+    global wavecounter
+    global bossreward
     Draw_Enemy_way("darkgoldenrod")
     draw_map()
     pygame.draw.rect(screen, 'red', (851, 251, 49, 49))
     build()
+    if len(enemies) == 0:
+        wavecounter += 1
+        all_bullets = []
+        if wavecounter % 10 == 0:
+            boss = True
+            Creating_Enemy(boss_hp, 2, 10, 'midnightblue', bossreward, 1)
+            bossreward += 5000
+            boss_hp += 20000
+        else:
+            boss = False
+            Creating_Enemy(monsterhp, 3, 10, 'midnightblue', monsterreward, numberofmonsters)
+            numberofmonsters += 0.4
+            monsterhp += 100
+            monsterreward += 0.5
     for enemy in enemies:
         enemy.Move()
         enemy.Draw()
         enemy.getdamage()
-        print(enemy.health)
-    Checking_player_death()
     for tower in all_towers:
         tower.draw_tower()
         tower.shot()
-    print(all_bullets)
     for bullet in all_bullets:
         bullet.moving()
         bullet.reached()
         bullet.draw_bullet()
+    Checking_player_death()
     lost_the_game()
 
 
@@ -317,8 +359,21 @@ pygame.init()
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 running = True
-player = Player(100, 100)
+player = Player(100, 10)
 f2 = pygame.font.SysFont('serif', 36)
+
+key_enter = pygame.key.get_pressed()
+while not key_enter[pygame.K_SPACE] and running:
+    image = pygame.image.load('over-zakat.png').convert_alpha()
+    screen.blit(image, (1, 1))
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+    key_enter = pygame.key.get_pressed()
+    pygame.display.update()
+    clock.tick(FPS)
+
+timer = 0
 
 while running:
     for event in pygame.event.get():
@@ -328,12 +383,15 @@ while running:
         # mouse_pos = event.pos
         # if event.type == pygame.MOUSEBUTTONDOWN:
         #   print(board.get_cell(event.pos))
-    screen.fill("black")
+    screen.fill("forestgreen")
     main()
+    timerr = f2.render(str(timer // 30), False, 'black')
     money = f2.render(str(player.money), False, "yellow")
     health = f2.render(str(player.health), False, "red")
     screen.blit(money, (10, 10))
     screen.blit(health, (10, 40))
+    screen.blit(timerr, (10, 70))
+    timer += 1
     pygame.display.update()
     clock.tick(FPS)
 
