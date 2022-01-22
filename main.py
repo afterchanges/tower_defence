@@ -394,8 +394,7 @@ while running:
     timer += 1
     pygame.display.update()
     clock.tick(FPS)
-
 while pygame.event.wait().type != pygame.QUIT:
     pass
-
+#КАК НАБРАТЬ СТРОКИ КОДА ПАМАГИТИ
 pygame.quit()
