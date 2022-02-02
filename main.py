@@ -1,5 +1,5 @@
 import math
-import keyboard
+
 import pygame
 
 FPS = 30
@@ -98,7 +98,6 @@ class Enemy:
             player.money += self.reward
             enemies.remove(self)
 
-
     def Move(self):
         a = vector(self.x, self.y, enemy_points[self.point][0], enemy_points[self.point][1])
         self.x += self.speed * a[0]
@@ -106,8 +105,11 @@ class Enemy:
         if a[2] <= self.speed:
             self.point += 1
             if self.point == len(enemy_points):
+                if boss:
+                    player.health -= 5
+                else:
+                    player.health -= 1
                 enemies.remove(self)
-                player.health -= 1
 
 
 class Way:
@@ -148,7 +150,6 @@ class BasicTower:
             screen.blit(image, (self.x - 30, self.y - 40))
 
 
-
 class MachineGun(BasicTower):
     def shot(self):
         distance = 999999999
@@ -157,11 +158,11 @@ class MachineGun(BasicTower):
             closest_enemy = vector(self.x + CELL_SIZE_2, self.y + CELL_SIZE_2, enemies[i].x, enemies[i].y)
             if closest_enemy[2] < distance:
                 current = i
-        if len (enemies) > 0:
+        if len(enemies) > 0:
             f_closest_enemy = vector(self.x, self.y, enemies[current].x, enemies[current].y)
             if self.current_reload <= 0 and f_closest_enemy[2] <= self.range:
-               all_bullets.append(Bullet(self.x, self.y, 3, "red", self.damage, 10))
-               self.current_reload = self.reload
+                all_bullets.append(Bullet(self.x, self.y, 3, "red", self.damage, 10))
+                self.current_reload = self.reload
             else:
                 self.current_reload -= 1 / FPS
 
@@ -226,7 +227,6 @@ class Bullet:
             self.x += self.speed * self.closest[0]
             self.y += self.speed * self.closest[1]
 
-
     def draw_bullet(self):
         pygame.draw.circle(screen, self.color, (self.x, self.y), self.size)
 
@@ -235,7 +235,6 @@ class Bullet:
             if self.closest[2] <= enemies[self.current_enemy].size + self.size:
                 enemies[self.current_enemy].health -= self.damage
                 all_bullets.remove(self)
-
 
 
 def build():
@@ -396,5 +395,5 @@ while running:
     clock.tick(FPS)
 while pygame.event.wait().type != pygame.QUIT:
     pass
-#КАК НАБРАТЬ СТРОКИ КОДА ПАМАГИТИ
+# КАК НАБРАТЬ СТРОКИ КОДА ПАМАГИТИ
 pygame.quit()
